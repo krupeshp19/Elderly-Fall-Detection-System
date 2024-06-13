@@ -1,51 +1,97 @@
 function activityData = generateActivityData(duration)
     % This function generates synthetic accelerometer and gyroscope data
-    % for a given duration. It simulates normal activities and fall events.
-    % The output data structure aligns with project requirements for use
-    % in further processing and machine learning models.
+    % for a given duration. It simulates different activities and fall events.
+    % It ensures reproducibility, validation, error handling, and secure data generation.
 
     % Parameters
     % duration - The total duration (in seconds) for which to generate data
 
+    % Set random seed for reproducibility
+    rng(42);
+
     % Validate input
-    if nargin < 1 || duration <= 0
+    if ~isscalar(duration) || duration <= 0
         error('Duration must be a positive integer.');
     end
-    
-    % Set random seed for reproducibility
-    rng(0);
 
     % Initialize time vector
     t = 1:duration;
 
-    % Generate normal activity data (e.g., walking)
-    normalAccel = sin(2 * pi * 0.2 * t) + 0.1 * randn(size(t));
-    normalGyro = cos(2 * pi * 0.2 * t) + 0.1 * randn(size(t));
-
     % Initialize accelerometer and gyroscope data arrays
-    accelData = normalAccel;
-    gyroData = normalGyro;
+    accelData = zeros(1, duration);
+    gyroData = zeros(1, duration);
 
-    % Introduce random fall events
-    fallDuration = 10; % Duration of a fall event
-    numFalls = randi([1, 3]); % Random number of falls between 1 and 3
+    % Define activity intervals (start and end indices for each activity)
+    activityIntervals = [
+        1, 50;    % Sitting
+        51, 100;  % Standing up
+        101, 200; % Walking
+        201, 300; % Running
+        301, 350; % Sitting down
+        351, 400; % Lying
+    ];
 
-    fallPositions = [];
-    for i = 1:numFalls
-        % Ensure non-overlapping fall events
-        fallStart = randi([1, duration - fallDuration]);
-        while any(abs(fallStart - fallPositions) < fallDuration)
-            fallStart = randi([1, duration - fallDuration]);
+    % Activity labels
+    activityLabels = {'Sitting', 'Standing up', 'Walking', 'Running', 'Sitting down', 'Lying'};
+
+    % Simulate activities
+    for i = 1:size(activityIntervals, 1)
+        startIdx = activityIntervals(i, 1);
+        endIdx = activityIntervals(i, 2);
+
+        switch i
+            case 1 % Sitting
+                accelData(startIdx:endIdx) = 0.05 * randn(1, endIdx - startIdx + 1); % Low variation
+                gyroData(startIdx:endIdx) = 0.05 * randn(1, endIdx - startIdx + 1); % Low variation
+            case 2 % Standing up
+                accelData(startIdx:endIdx) = linspace(0, 2, endIdx - startIdx + 1) + 0.1 * randn(1, endIdx - startIdx + 1);
+                gyroData(startIdx:endIdx) = linspace(0, 1, endIdx - startIdx + 1) + 0.1 * randn(1, endIdx - startIdx + 1);
+            case 3 % Walking
+                accelData(startIdx:endIdx) = 1.5 * sin(2 * pi * 0.5 * (1:(endIdx - startIdx + 1))) + 0.2 * randn(1, endIdx - startIdx + 1);
+                gyroData(startIdx:endIdx) = 1.5 * cos(2 * pi * 0.5 * (1:(endIdx - startIdx + 1))) + 0.2 * randn(1, endIdx - startIdx + 1);
+            case 4 % Running
+                accelData(startIdx:endIdx) = 3 * sin(2 * pi * 1 * (1:(endIdx - startIdx + 1))) + 0.3 * randn(1, endIdx - startIdx + 1);
+                gyroData(startIdx:endIdx) = 3 * cos(2 * pi * 1 * (1:(endIdx - startIdx + 1))) + 0.3 * randn(1, endIdx - startIdx + 1);
+            case 5 % Sitting down
+                accelData(startIdx:endIdx) = linspace(2, 0, endIdx - startIdx + 1) + 0.1 * randn(1, endIdx - startIdx + 1);
+                gyroData(startIdx:endIdx) = linspace(1, 0, endIdx - startIdx + 1) + 0.1 * randn(1, endIdx - startIdx + 1);
+            case 6 % Lying
+                accelData(startIdx:endIdx) = 0.03 * randn(1, endIdx - startIdx + 1); % Very low variation
+                gyroData(startIdx:endIdx) = 0.03 * randn(1, endIdx - startIdx + 1); % Very low variation
         end
-        fallPositions(end+1) = fallStart; %#ok<AGROW>
+    end
 
-        % Generate fall event data for accelerometer
-        fallAccel = 5 * rand(1, fallDuration); % Higher values to simulate a fall
-        accelData(fallStart:fallStart + fallDuration - 1) = fallAccel;
+    % Introduce random fall events in the middle of activities
+    fallDuration = 10; % Duration of a fall event
+    numFalls = 2; % Simulate two types of falls
 
-        % Generate fall event data for gyroscope
-        fallGyro = 5 * rand(1, fallDuration); % Higher values to simulate a fall
-        gyroData(fallStart:fallStart + fallDuration - 1) = fallGyro;
+    % Fall event types: forward and backward
+    fallTypes = {'forward', 'backward'};
+    for i = 1:numFalls
+        % Select a random activity interval
+        activityIdx = randi(size(activityIntervals, 1));
+        startIdx = activityIntervals(activityIdx, 1);
+        endIdx = activityIntervals(activityIdx, 2);
+        
+        % Randomly select the start point of the fall event within the interval
+        fallStart = randi([startIdx + fallDuration, endIdx - fallDuration]);
+
+        fallType = fallTypes{i};
+
+        switch fallType
+            case 'forward'
+                % Generate forward fall event data
+                fallAccel = 5 * ones(1, fallDuration); % Higher values to simulate a fall
+                accelData(fallStart:fallStart + fallDuration - 1) = fallAccel;
+                fallGyro = 5 * ones(1, fallDuration); % Higher values to simulate a fall
+                gyroData(fallStart:fallStart + fallDuration - 1) = fallGyro;
+            case 'backward'
+                % Generate backward fall event data
+                fallAccel = -5 * ones(1, fallDuration); % Higher values to simulate a fall
+                accelData(fallStart:fallStart + fallDuration - 1) = fallAccel;
+                fallGyro = -5 * ones(1, fallDuration); % Higher values to simulate a fall
+                gyroData(fallStart:fallStart + fallDuration - 1) = fallGyro;
+        end
     end
 
     % Package the generated data into a struct
@@ -53,18 +99,58 @@ function activityData = generateActivityData(duration)
     activityData.accel = accelData;
     activityData.gyro = gyroData;
 
-    % Plot the generated data for visual verification
+    % Plot the generated data for visual verification with colors
     figure;
+
     subplot(2, 1, 1);
-    plot(t, accelData);
-    title('Synthetic Accelerometer Data');
+    hold on;
+    title('Synthetic Accelerometer Data with Different Activities and Falls');
     xlabel('Time (s)');
     ylabel('Acceleration (m/s^2)');
-
+    
     subplot(2, 1, 2);
-    plot(t, gyroData);
-    title('Synthetic Gyroscope Data');
+    hold on;
+    title('Synthetic Gyroscope Data with Different Activities and Falls');
     xlabel('Time (s)');
     ylabel('Angular Velocity (rad/s)');
 
+    colors = lines(size(activityIntervals, 1) + numFalls); % Generate distinct colors
+    legendLabels = [activityLabels, 'Forward Fall', 'Backward Fall'];
+    
+    % Plot each activity interval with different colors
+    for i = 1:size(activityIntervals, 1)
+        startIdx = activityIntervals(i, 1);
+        endIdx = activityIntervals(i, 2);
+        subplot(2, 1, 1);
+        plot(t(startIdx:endIdx), accelData(startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        subplot(2, 1, 2);
+        plot(t(startIdx:endIdx), gyroData(startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+    end
+    
+    % Plot fall events with different colors
+    for i = 1:numFalls
+        if i == 1
+            fallIdx = find(accelData == 5, 1); % Find the start of forward fall event
+        else
+            fallIdx = find(accelData == -5, 1); % Find the start of backward fall event
+        end
+        
+        if ~isempty(fallIdx)
+            fallEnd = fallIdx + fallDuration - 1;
+            subplot(2, 1, 1);
+            plot(t(fallIdx:fallEnd), accelData(fallIdx:fallEnd), 'Color', colors(size(activityIntervals, 1) + i, :), 'LineWidth', 1.5);
+            subplot(2, 1, 2);
+            plot(t(fallIdx:fallEnd), gyroData(fallIdx:fallEnd), 'Color', colors(size(activityIntervals, 1) + i, :), 'LineWidth', 1.5);
+        end
+    end
+
+    subplot(2, 1, 1);
+    legend(legendLabels, 'Location', 'best');
+    subplot(2, 1, 2);
+    legend(legendLabels, 'Location', 'best');
+    
+    hold off;
+
+    % Save the data to a file (optional)
+    % save('synthetic_activity_data.mat', 'activityData');
 end
