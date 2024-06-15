@@ -7,7 +7,7 @@ function activityData = generateActivityData(duration)
     % duration - The total duration (in seconds) for which to generate data
 
     % Set random seed for reproducibility
-    %rng(42);
+    rng(42);
 
     % Validate input
     if ~isscalar(duration) || duration <= 0
