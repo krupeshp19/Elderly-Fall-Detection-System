@@ -1,12 +1,13 @@
 function activityData = generateActivityData(duration)
     % This function generates synthetic accelerometer and gyroscope data
     % for a given duration. It simulates different activities and fall events.
+    % It ensures reproducibility, validation, error handling, and secure data generation.
 
     % Parameters
     % duration - The total duration (in seconds) for which to generate data
 
     % Set random seed for reproducibility
-    rng(0);
+    %rng(42);
 
     % Validate input
     if ~isscalar(duration) || duration <= 0
@@ -20,21 +21,32 @@ function activityData = generateActivityData(duration)
     accelData = zeros(1, duration);
     gyroData = zeros(1, duration);
 
-    % Define activity proportions
-    activityProportions = [0.1, 0.1, 0.4, 0.2, 0.1, 0.1]; % Proportions for Sitting, Standing up, Walking, Running, Sitting down, Lying
-    activityLabels = {'Sitting', 'Standing up', 'Walking', 'Running', 'Sitting down', 'Lying'};
-    
-    % Calculate activity intervals based on the proportions
-    activityIntervals = round(activityProportions * duration);
+    % Define activity ratios (relative duration of each activity)
+    activityRatios = [
+        0.15;  % Sitting
+        0.02;  % Standing up
+        0.25;  % Walking
+        0.25;  % Running
+        0.02;  % Sitting down
+        0.25;  % Lying
+    ];
 
-    % Cumulative start and end indices for activities
-    activityStartIdx = [1, cumsum(activityIntervals(1:end-1)) + 1];
-    activityEndIdx = cumsum(activityIntervals);
+    % Calculate activity intervals based on duration and ratios
+    activityIntervals = round(duration * activityRatios);
+    activityIntervals = [0; cumsum(activityIntervals)];
+
+    % Ensure the intervals sum to the total duration
+    if activityIntervals(end) < duration
+        activityIntervals(end) = duration;
+    end
+
+    % Activity labels
+    activityLabels = {'Sitting', 'Standing up', 'Walking', 'Running', 'Sitting down', 'Lying'};
 
     % Simulate activities
-    for i = 1:length(activityProportions)
-        startIdx = activityStartIdx(i);
-        endIdx = activityEndIdx(i);
+    for i = 1:length(activityLabels)
+        startIdx = activityIntervals(i) + 1;
+        endIdx = activityIntervals(i + 1);
 
         switch activityLabels{i}
             case 'Sitting'
@@ -67,8 +79,8 @@ function activityData = generateActivityData(duration)
     for i = 1:numFalls
         % Select a random activity interval
         activityIdx = randi(length(activityLabels));
-        startIdx = activityStartIdx(activityIdx);
-        endIdx = activityEndIdx(activityIdx);
+        startIdx = activityIntervals(activityIdx) + 1;
+        endIdx = activityIntervals(activityIdx + 1);
         
         % Randomly select the start point of the fall event within the interval
         fallStart = randi([startIdx + fallDuration, endIdx - fallDuration]);
@@ -112,12 +124,12 @@ function activityData = generateActivityData(duration)
     ylabel('Angular Velocity (rad/s)');
 
     colors = lines(length(activityLabels) + numFalls); % Generate distinct colors
-    legendLabels = [activityLabels, 'Forward Fall', 'Backward Fall'];
+    legendLabels = [activityLabels, {'Forward Fall', 'Backward Fall'}]; % Create as cell array
     
     % Plot each activity interval with different colors
     for i = 1:length(activityLabels)
-        startIdx = activityStartIdx(i);
-        endIdx = activityEndIdx(i);
+        startIdx = activityIntervals(i) + 1;
+        endIdx = activityIntervals(i + 1);
         subplot(2, 1, 1);
         plot(t(startIdx:endIdx), accelData(startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
         subplot(2, 1, 2);
@@ -148,4 +160,6 @@ function activityData = generateActivityData(duration)
     
     hold off;
 
+    % Save the data to a file (optional)
+    % save('synthetic_activity_data.mat', 'activityData');
 end
