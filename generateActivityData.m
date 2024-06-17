@@ -133,56 +133,29 @@ function activityData = generateActivityData(duration)
 
     % Plot the generated data for visual verification
     figure;
-    ax1 = subplot(3, 2, 1);
-    hold on;
-    title('Accelerometer Data (X-axis)');
-    xlabel('Time (s)');
-    ylabel('Acceleration (m/s^2)');
-
-    ax2 = subplot(3, 2, 2);
-    hold on;
-    title('Gyroscope Data (X-axis)');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (rad/s)');
-
-    ax3 = subplot(3, 2, 3);
-    hold on;
-    title('Accelerometer Data (Y-axis)');
-    xlabel('Time (s)');
-    ylabel('Acceleration (m/s^2)');
-
-    ax4 = subplot(3, 2, 4);
-    hold on;
-    title('Gyroscope Data (Y-axis)');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (rad/s)');
-
-    ax5 = subplot(3, 2, 5);
-    hold on;
-    title('Accelerometer Data (Z-axis)');
-    xlabel('Time (s)');
-    ylabel('Acceleration (m/s^2)');
-
-    ax6 = subplot(3, 2, 6);
-    hold on;
-    title('Gyroscope Data (Z-axis)');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (rad/s)');
+    subplot(3, 2, 1); hold on; title('Accelerometer Data (X-axis)'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
+    subplot(3, 2, 2); hold on; title('Gyroscope Data (X-axis)'); xlabel('Time (s)'); ylabel('Angular Velocity (rad/s)');
+    subplot(3, 2, 3); hold on; title('Accelerometer Data (Y-axis)'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
+    subplot(3, 2, 4); hold on; title('Gyroscope Data (Y-axis)'); xlabel('Time (s)'); ylabel('Angular Velocity (rad/s)');
+    subplot(3, 2, 5); hold on; title('Accelerometer Data (Z-axis)'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
+    subplot(3, 2, 6); hold on; title('Gyroscope Data (Z-axis)'); xlabel('Time (s)'); ylabel('Angular Velocity (rad/s)');
 
     colors = lines(length(activityLabels) + length(fallTypes));
     legendLabels = [activityLabels, {'Forward Fall', 'Backward Fall'}];
 
+    % Plot data
     for i = 1:length(activityLabels)
         startIdx = activityIntervals(i) + 1;
         endIdx = activityIntervals(i + 1);
-        plot(ax1, t(startIdx:endIdx), accelData(1, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax2, t(startIdx:endIdx), gyroData(1, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax3, t(startIdx:endIdx), accelData(2, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax4, t(startIdx:endIdx), gyroData(2, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax5, t(startIdx:endIdx), accelData(3, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax6, t(startIdx:endIdx), gyroData(3, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        for axis = 1:3
+            subplot(3, 2, axis * 2 - 1);
+            plot(t(startIdx:endIdx), accelData(axis, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+            subplot(3, 2, axis * 2);
+            plot(t(startIdx:endIdx), gyroData(axis, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        end
     end
 
+    % Highlight fall events
     for i = 1:length(fallTypes)
         if i == 1
             fallIdx = find(accelData(1, :) == 5, 1);
@@ -191,20 +164,19 @@ function activityData = generateActivityData(duration)
         end
         if ~isempty(fallIdx)
             fallEnd = fallIdx + fallDuration - 1;
-            plot(ax1, t(fallIdx:fallEnd), accelData(1, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax2, t(fallIdx:fallEnd), gyroData(1, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax3, t(fallIdx:fallEnd), accelData(2, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax4, t(fallIdx:fallEnd), gyroData(2, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax5, t(fallIdx:fallEnd), accelData(3, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax6, t(fallIdx:fallEnd), gyroData(3, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            for axis = 1:3
+                subplot(3, 2, axis * 2 - 1);
+                plot(t(fallIdx:fallEnd), accelData(axis, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+                subplot(3, 2, axis * 2);
+                plot(t(fallIdx:fallEnd), gyroData(axis, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            end
         end
     end
 
-    % Adjust subplot layout to make space for the legend
-    subplot();
+    % Add legend
     legend(legendLabels, 'Location', 'best', 'FontSize', 8);  % Place legend outside the subplots
     hold off;
 
-    % Save the data to a file
+    % Save the data to a file (uncomment to save)
     % save('synthetic_activity_data.mat', 'activityData');
 end
