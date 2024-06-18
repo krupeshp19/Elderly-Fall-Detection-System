@@ -3,7 +3,7 @@ function activityData = generateActivityData(duration)
     % for a given duration. It simulates different activities and fall events.
 
     % Set random seed for reproducibility
-    rng(42);
+    % rng(42);
 
     % Validate input
     if ~isscalar(duration) || duration <= 0
@@ -18,8 +18,7 @@ function activityData = generateActivityData(duration)
     gyroData = zeros(3, duration);
 
     % Define a fixed sequence of activities
-    activityLabels = {'Sitting', 'Sitting up fast', 'Jumping', 'Going downstairs', ...
-                      'Walking', 'Running', 'Going upstairs', 'Sitting down fast', 'Lying'};
+    activityLabels = {'Sitting', 'Sitting up fast', 'Jumping', 'Walking', 'Running', 'Sitting down fast', 'Lying'};
     
     % Define durations for short-duration activities (in seconds)
     shortDuration = 5; % duration for short activities
@@ -70,14 +69,6 @@ function activityData = generateActivityData(duration)
             case 'Sitting up fast'
                 accelData(:, startIdx:endIdx) = smoothTransition(0, 2, len) + generateNoise(0.1, 0.1, [3, len]);
                 gyroData(:, startIdx:endIdx) = smoothTransition(0, 1, len) + generateNoise(0.1, 0.1, [3, len]);
-            case 'Going upstairs'
-                freq = generateVaryingSpeed(0.5, 0.2, len);
-                accelData(:, startIdx:endIdx) = 1.5 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
-                gyroData(:, startIdx:endIdx) = 1.5 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
-            case 'Going downstairs'
-                freq = generateVaryingSpeed(0.5, 0.2, len);
-                accelData(:, startIdx:endIdx) = 1.5 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
-                gyroData(:, startIdx:endIdx) = 1.5 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
             case 'Walking'
                 freq = generateVaryingSpeed(0.5, 0.2, len);
                 accelData(:, startIdx:endIdx) = 1.5 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
@@ -98,9 +89,10 @@ function activityData = generateActivityData(duration)
         end
     end
 
-    % Introduce random fall events with gradual changes
+     % Introduce random fall events with gradual changes
     fallDuration = 10;
     fallTypes = {'forward', 'backward'};
+    fallMagnitudes = [4, 6]; % Different magnitudes for falls
     fallDistribution = randperm(length(activityLabels), length(fallTypes));
 
     for i = 1:length(fallTypes)
@@ -110,17 +102,18 @@ function activityData = generateActivityData(duration)
 
         if endIdx - startIdx > 2 * fallDuration
             fallStart = randi([startIdx + fallDuration, endIdx - fallDuration]);
+            fallMagnitude = fallMagnitudes(randi(length(fallMagnitudes)));
 
             switch fallTypes{i}
                 case 'forward'
-                    fallAccel = smoothTransition(0, 5, fallDuration); % Gradual increase to simulate fall
+                    fallAccel = smoothTransition(0, fallMagnitude, fallDuration); % Gradual increase to simulate fall
                     accelData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallAccel, 3, 1);
-                    fallGyro = smoothTransition(0, 5, fallDuration); % Gradual increase to simulate fall
+                    fallGyro = smoothTransition(0, fallMagnitude, fallDuration); % Gradual increase to simulate fall
                     gyroData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallGyro, 3, 1);
                 case 'backward'
-                    fallAccel = smoothTransition(0, -5, fallDuration); % Gradual decrease to simulate fall
+                    fallAccel = smoothTransition(0, -fallMagnitude, fallDuration); % Gradual decrease to simulate fall
                     accelData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallAccel, 3, 1);
-                    fallGyro = smoothTransition(0, -5, fallDuration); % Gradual decrease to simulate fall
+                    fallGyro = smoothTransition(0, -fallMagnitude, fallDuration); % Gradual decrease to simulate fall
                     gyroData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallGyro, 3, 1);
             end
         end
@@ -133,50 +126,72 @@ function activityData = generateActivityData(duration)
 
     % Plot the generated data for visual verification
     figure;
-    subplot(3, 2, 1); hold on; title('Accelerometer Data (X-axis)'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
-    subplot(3, 2, 2); hold on; title('Gyroscope Data (X-axis)'); xlabel('Time (s)'); ylabel('Angular Velocity (rad/s)');
-    subplot(3, 2, 3); hold on; title('Accelerometer Data (Y-axis)'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
-    subplot(3, 2, 4); hold on; title('Gyroscope Data (Y-axis)'); xlabel('Time (s)'); ylabel('Angular Velocity (rad/s)');
-    subplot(3, 2, 5); hold on; title('Accelerometer Data (Z-axis)'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
-    subplot(3, 2, 6); hold on; title('Gyroscope Data (Z-axis)'); xlabel('Time (s)'); ylabel('Angular Velocity (rad/s)');
+    ax1 = subplot(3, 2, 1);
+    hold on;
+    title('Accelerometer Data (X-axis)');
+    xlabel('Time (s)');
+    ylabel('Acceleration (m/s^2)');
+
+    ax2 = subplot(3, 2, 2);
+    hold on;
+    title('Gyroscope Data (X-axis)');
+    xlabel('Time (s)');
+    ylabel('Angular Velocity (rad/s)');
+
+    ax3 = subplot(3, 2, 3);
+    hold on;
+    title('Accelerometer Data (Y-axis)');
+    xlabel('Time (s)');
+    ylabel('Acceleration (m/s^2)');
+
+    ax4 = subplot(3, 2, 4);
+    hold on;
+    title('Gyroscope Data (Y-axis)');
+    xlabel('Time (s)');
+    ylabel('Angular Velocity (rad/s)');
+
+    ax5 = subplot(3, 2, 5);
+    hold on;
+    title('Accelerometer Data (Z-axis)');
+    xlabel('Time (s)');
+    ylabel('Acceleration (m/s^2)');
+
+    ax6 = subplot(3, 2, 6);
+    hold on;
+    title('Gyroscope Data (Z-axis)');
+    xlabel('Time (s)');
+    ylabel('Angular Velocity (rad/s)');
 
     colors = lines(length(activityLabels) + length(fallTypes));
     legendLabels = [activityLabels, {'Forward Fall', 'Backward Fall'}];
 
-    % Plot data
     for i = 1:length(activityLabels)
         startIdx = activityIntervals(i) + 1;
         endIdx = activityIntervals(i + 1);
-        for axis = 1:3
-            subplot(3, 2, axis * 2 - 1);
-            plot(t(startIdx:endIdx), accelData(axis, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-            subplot(3, 2, axis * 2);
-            plot(t(startIdx:endIdx), gyroData(axis, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        end
+        plot(ax1, t(startIdx:endIdx), accelData(1, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        plot(ax2, t(startIdx:endIdx), gyroData(1, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        plot(ax3, t(startIdx:endIdx), accelData(2, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        plot(ax4, t(startIdx:endIdx), gyroData(2, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        plot(ax5, t(startIdx:endIdx), accelData(3, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
+        plot(ax6, t(startIdx:endIdx), gyroData(3, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
     end
 
-    % Highlight fall events
     for i = 1:length(fallTypes)
-        if i == 1
-            fallIdx = find(accelData(1, :) == 5, 1);
-        else
-            fallIdx = find(accelData(1, :) == -5, 1);
-        end
+        fallIdx = find(abs(accelData(1, :)) == max(abs(accelData(1, :))), 1);
         if ~isempty(fallIdx)
             fallEnd = fallIdx + fallDuration - 1;
-            for axis = 1:3
-                subplot(3, 2, axis * 2 - 1);
-                plot(t(fallIdx:fallEnd), accelData(axis, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-                subplot(3, 2, axis * 2);
-                plot(t(fallIdx:fallEnd), gyroData(axis, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            end
+            plot(ax1, t(fallIdx:fallEnd), accelData(1, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            plot(ax2, t(fallIdx:fallEnd), gyroData(1, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            plot(ax3, t(fallIdx:fallEnd), accelData(2, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            plot(ax4, t(fallIdx:fallEnd), gyroData(2, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            plot(ax5, t(fallIdx:fallEnd), accelData(3, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
+            plot(ax6, t(fallIdx:fallEnd), gyroData(3, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
         end
     end
 
-    % Add legend
-    legend(legendLabels, 'Location', 'best', 'FontSize', 8);  % Place legend outside the subplots
-    hold off;
+    legend(ax1, legendLabels, 'Location', 'best');
+    hold(ax1, 'off');
 
-    % Save the data to a file (uncomment to save)
+    % Save the data to a file
     % save('synthetic_activity_data.mat', 'activityData');
 end
