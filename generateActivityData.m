@@ -18,7 +18,7 @@ function activityData = generateActivityData(duration)
     gyroData = zeros(3, duration);
 
     % Define a fixed sequence of activities
-    activityLabels = {'Sitting', 'Sitting up fast', 'Jumping', 'Walking', 'Running', 'Sitting down fast', 'Lying'};
+    activityLabels = {'Sitting', 'Sitting up fast', 'Walking', 'Running', 'Sitting down fast', 'Lying'};
     
     % Define durations for short-duration activities (in seconds)
     shortDuration = 5; % duration for short activities
@@ -70,16 +70,19 @@ function activityData = generateActivityData(duration)
                 accelData(:, startIdx:endIdx) = smoothTransition(0, 2, len) + generateNoise(0.1, 0.1, [3, len]);
                 gyroData(:, startIdx:endIdx) = smoothTransition(0, 1, len) + generateNoise(0.1, 0.1, [3, len]);
             case 'Walking'
-                freq = generateVaryingSpeed(0.5, 0.2, len);
-                accelData(:, startIdx:endIdx) = 1.5 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
-                gyroData(:, startIdx:endIdx) = 1.5 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
+                baseFreq = 1.5;
+                variability = 0.5;
+                walkingPattern = generateVaryingSpeed(baseFreq, variability, len);
+                accelData(1, startIdx:endIdx) = sin(walkingPattern) + generateNoise(0, 0.1, [1, len]);
+                accelData(2, startIdx:endIdx) = cos(walkingPattern) + generateNoise(0, 0.1, [1, len]);
+                gyroData(:, startIdx:endIdx) = generateNoise(0, 0.1, [3, len]);
             case 'Running'
-                freq = generateVaryingSpeed(1, 0.5, len);
-                accelData(:, startIdx:endIdx) = 3 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.3, 0.3, [3, len]);
-                gyroData(:, startIdx:endIdx) = 3 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.3, 0.3, [3, len]);
-            case 'Jumping'
-                accelData(:, startIdx:endIdx) = 3 * abs(sin(2 * pi * (1:len))) + generateNoise(0.3, 0.3, [3, len]);
-                gyroData(:, startIdx:endIdx) = 3 * abs(cos(2 * pi * (1:len))) + generateNoise(0.3, 0.3, [3, len]);
+                baseFreq = 2.5;
+                variability = 0.5;
+                runningPattern = generateVaryingSpeed(baseFreq, variability, len);
+                accelData(1, startIdx:endIdx) = sin(runningPattern) + generateNoise(0, 0.2, [1, len]);
+                accelData(2, startIdx:endIdx) = cos(runningPattern) + generateNoise(0, 0.2, [1, len]);
+                gyroData(:, startIdx:endIdx) = generateNoise(0, 0.2, [3, len]);
             case 'Sitting down fast'
                 accelData(:, startIdx:endIdx) = smoothTransition(2, 0, len) + generateNoise(0.1, 0.1, [3, len]);
                 gyroData(:, startIdx:endIdx) = smoothTransition(1, 0, len) + generateNoise(0.1, 0.1, [3, len]);
@@ -92,7 +95,7 @@ function activityData = generateActivityData(duration)
      % Introduce random fall events with gradual changes
     fallDuration = 10;
     fallTypes = {'forward', 'backward'};
-    fallMagnitudes = [4, 6]; % Different magnitudes for falls
+    fallMagnitudes = [4, 7]; % Different magnitudes for falls
     fallDistribution = randperm(length(activityLabels), length(fallTypes));
 
     for i = 1:length(fallTypes)
