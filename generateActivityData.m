@@ -2,9 +2,6 @@ function activityData = generateActivityData(duration)
     % This function generates synthetic accelerometer and gyroscope data
     % for a given duration. It simulates different activities and fall events.
 
-    % Set random seed for reproducibility
-    % rng(42);
-
     % Validate input
     if ~isscalar(duration) || duration <= 0
         error('Duration must be a positive integer.');
@@ -47,6 +44,9 @@ function activityData = generateActivityData(duration)
         activityIntervals(end) = duration;
     end
 
+    % Initialize activity log
+    activityLog = [];
+
     % Function to generate noise with variable levels
     generateNoise = @(baseNoise, variability, size) baseNoise + variability * randn(size);
 
@@ -61,6 +61,10 @@ function activityData = generateActivityData(duration)
         startIdx = activityIntervals(i) + 1;
         endIdx = activityIntervals(i + 1);
         len = endIdx - startIdx + 1;
+        activityID = i; % Unique ID for each activity
+
+        % Log the activity
+        activityLog = [activityLog; struct('ID', activityID, 'Label', activityLabels{i}, 'Start', startIdx, 'End', endIdx)];
 
         switch activityLabels{i}
             case 'Sitting'
@@ -70,19 +74,16 @@ function activityData = generateActivityData(duration)
                 accelData(:, startIdx:endIdx) = smoothTransition(0, 2, len) + generateNoise(0.1, 0.1, [3, len]);
                 gyroData(:, startIdx:endIdx) = smoothTransition(0, 1, len) + generateNoise(0.1, 0.1, [3, len]);
             case 'Walking'
-                baseFreq = 1.5;
-                variability = 0.5;
-                walkingPattern = generateVaryingSpeed(baseFreq, variability, len);
-                accelData(1, startIdx:endIdx) = sin(walkingPattern) + generateNoise(0, 0.1, [1, len]);
-                accelData(2, startIdx:endIdx) = cos(walkingPattern) + generateNoise(0, 0.1, [1, len]);
-                gyroData(:, startIdx:endIdx) = generateNoise(0, 0.1, [3, len]);
+                freq = generateVaryingSpeed(0.5, 0.2, len);
+                accelData(:, startIdx:endIdx) = 1.5 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
+                gyroData(:, startIdx:endIdx) = 1.5 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
             case 'Running'
-                baseFreq = 2.5;
-                variability = 0.5;
-                runningPattern = generateVaryingSpeed(baseFreq, variability, len);
-                accelData(1, startIdx:endIdx) = sin(runningPattern) + generateNoise(0, 0.2, [1, len]);
-                accelData(2, startIdx:endIdx) = cos(runningPattern) + generateNoise(0, 0.2, [1, len]);
-                gyroData(:, startIdx:endIdx) = generateNoise(0, 0.2, [3, len]);
+                freq = generateVaryingSpeed(1, 0.5, len);
+                accelData(:, startIdx:endIdx) = 3 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.3, 0.3, [3, len]);
+                gyroData(:, startIdx:endIdx) = 3 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.3, 0.3, [3, len]);
+            % case 'Jumping'
+                % accelData(:, startIdx:endIdx) = 3 * abs(sin(2 * pi * (1:len))) + generateNoise(0.3, 0.3, [3, len]);
+                % gyroData(:, startIdx:endIdx) = 3 * abs(cos(2 * pi * (1:len))) + generateNoise(0.3, 0.3, [3, len]);
             case 'Sitting down fast'
                 accelData(:, startIdx:endIdx) = smoothTransition(2, 0, len) + generateNoise(0.1, 0.1, [3, len]);
                 gyroData(:, startIdx:endIdx) = smoothTransition(1, 0, len) + generateNoise(0.1, 0.1, [3, len]);
@@ -95,7 +96,7 @@ function activityData = generateActivityData(duration)
      % Introduce random fall events with gradual changes
     fallDuration = 10;
     fallTypes = {'forward', 'backward'};
-    fallMagnitudes = [4, 7]; % Different magnitudes for falls
+    fallMagnitudes = [4, 6]; % Different magnitudes for falls
     fallDistribution = randperm(length(activityLabels), length(fallTypes));
 
     for i = 1:length(fallTypes)
@@ -106,6 +107,10 @@ function activityData = generateActivityData(duration)
         if endIdx - startIdx > 2 * fallDuration
             fallStart = randi([startIdx + fallDuration, endIdx - fallDuration]);
             fallMagnitude = fallMagnitudes(randi(length(fallMagnitudes)));
+            fallID = length(activityLabels) + i; % Unique ID for each fall
+
+            % Log the fall
+            activityLog = [activityLog; struct('ID', fallID, 'Label', [fallTypes{i} ' Fall'], 'Start', fallStart, 'End', fallStart + fallDuration - 1)];
 
             switch fallTypes{i}
                 case 'forward'
@@ -126,6 +131,7 @@ function activityData = generateActivityData(duration)
     activityData.time = t;
     activityData.accel = accelData;
     activityData.gyro = gyroData;
+    activityData.log = activityLog;
 
     % Plot the generated data for visual verification
     figure;
@@ -195,6 +201,6 @@ function activityData = generateActivityData(duration)
     legend(ax1, legendLabels, 'Location', 'best');
     hold(ax1, 'off');
 
-    % Save the data to a file
+    % Save the data to a file 
     % save('synthetic_activity_data.mat', 'activityData');
 end
