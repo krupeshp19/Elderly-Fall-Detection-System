@@ -1,100 +1,107 @@
-function activityData = generateActivityData(duration)
-    % This function generates synthetic accelerometer and gyroscope data
-    % for a given duration. It simulates different activities and fall events.
-
+function [accelData, gyroData, activityLog, fs, t] = generateActivityData(duration)
     % Validate input
-    if ~isscalar(duration) || duration <= 0
+    if ~isscalar(duration) || duration <= 0 || mod(duration, 1) ~= 0
         error('Duration must be a positive integer.');
     end
 
-    % Initialize time vector
-    t = 1:duration;
-
-    % Initialize accelerometer and gyroscope data arrays for x, y, and z axes
-    accelData = zeros(3, duration);
-    gyroData = zeros(3, duration);
-
-    % Define a fixed sequence of activities
-    activityLabels = {'Sitting', 'Sitting up fast', 'Walking', 'Running', 'Sitting down fast', 'Lying'};
-    
-    % Define durations for short-duration activities (in seconds)
-    shortDuration = 5; % duration for short activities
-    shortActivities = {'Sitting up fast', 'Sitting down fast'};
-
-    % Calculate remaining duration for long activities
-    longActivities = setdiff(activityLabels, shortActivities);
-    remainingDuration = duration - length(shortActivities) * shortDuration;
-    longActivityDuration = floor(remainingDuration / length(longActivities));
-
-    % Assign durations to each activity
-    activityDurations = containers.Map();
-    for i = 1:length(shortActivities)
-        activityDurations(shortActivities{i}) = shortDuration;
-    end
-    for i = 1:length(longActivities)
-        activityDurations(longActivities{i}) = longActivityDuration;
-    end
-
-    % Define activity intervals
-    activityIntervals = zeros(length(activityLabels) + 1, 1);
-    for i = 1:length(activityLabels)
-        activityIntervals(i + 1) = activityIntervals(i) + activityDurations(activityLabels{i});
-    end
-    if activityIntervals(end) < duration
-        activityIntervals(end) = duration;
-    end
-
-    % Initialize activity log
+    % Initialize parameters
+    fs = 50; % Sampling frequency (Hz)
+    t = 1:(duration * fs);
+    activityLabels = {'STANDING', 'WALKING UPSTAIRS', 'WALKING', 'WALKING DOWNSTAIRS', 'JOGGING', 'SITTING', 'LAYING'};
+    activityDuration = floor(duration / length(activityLabels) * fs);
+    activityIntervals = 0:activityDuration:(length(activityLabels) * activityDuration);
     activityLog = [];
 
-    % Function to generate noise with variable levels
+    % Initialize accelerometer and gyroscope data arrays for x, y, and z axes
+    accelData = zeros(3, length(t));
+    gyroData = zeros(3, length(t));
+
+    % Helper functions
     generateNoise = @(baseNoise, variability, size) baseNoise + variability * randn(size);
-
-    % Function to smooth transitions between activities
-    smoothTransition = @(startVal, endVal, len) linspace(startVal, endVal, len);
-
-    % Function to generate varying speed patterns
     generateVaryingSpeed = @(baseFreq, variability, len) baseFreq + variability * sin(linspace(0, 2*pi, len));
+
+    % Define mathematical functions for each activity and axis
+    % Walking
+    walkingAccelX = @(len) 1.5 * sin(2 * pi * generateVaryingSpeed(0.5, 0.2, len) .* (1:len));
+    walkingAccelY = @(len) 1.5 * cos(2 * pi * generateVaryingSpeed(0.5, 0.2, len) .* (1:len));
+    walkingAccelZ = @(len) 1.5 * sin(2 * pi * generateVaryingSpeed(0.5, 0.2, len) .* (1:len));
+    walkingGyroX = @(len) 1.5 * cos(2 * pi * generateVaryingSpeed(0.5, 0.2, len) .* (1:len));
+    walkingGyroY = @(len) 1.5 * sin(2 * pi * generateVaryingSpeed(0.5, 0.2, len) .* (1:len));
+    walkingGyroZ = @(len) 1.5 * cos(2 * pi * generateVaryingSpeed(0.5, 0.2, len) .* (1:len));
+
+    % Walking Upstairs
+    walkingUpstairsAccelX = @(len) 1.7 * sin(2 * pi * generateVaryingSpeed(0.6, 0.3, len) .* (1:len));
+    walkingUpstairsAccelY = @(len) 1.7 * cos(2 * pi * generateVaryingSpeed(0.6, 0.3, len) .* (1:len));
+    walkingUpstairsAccelZ = @(len) 1.7 * sin(2 * pi * generateVaryingSpeed(0.6, 0.3, len) .* (1:len));
+    walkingUpstairsGyroX = @(len) 1.7 * cos(2 * pi * generateVaryingSpeed(0.6, 0.3, len) .* (1:len));
+    walkingUpstairsGyroY = @(len) 1.7 * sin(2 * pi * generateVaryingSpeed(0.6, 0.3, len) .* (1:len));
+    walkingUpstairsGyroZ = @(len) 1.7 * cos(2 * pi * generateVaryingSpeed(0.6, 0.3, len) .* (1:len));
+
+    % Walking Downstairs
+    walkingDownstairsAccelX = @(len) 1.8 * sin(2 * pi * generateVaryingSpeed(0.7, 0.4, len) .* (1:len));
+    walkingDownstairsAccelY = @(len) 1.8 * cos(2 * pi * generateVaryingSpeed(0.7, 0.4, len) .* (1:len));
+    walkingDownstairsAccelZ = @(len) 1.8 * sin(2 * pi * generateVaryingSpeed(0.7, 0.4, len) .* (1:len));
+    walkingDownstairsGyroX = @(len) 1.8 * cos(2 * pi * generateVaryingSpeed(0.7, 0.4, len) .* (1:len));
+    walkingDownstairsGyroY = @(len) 1.8 * sin(2 * pi * generateVaryingSpeed(0.7, 0.4, len) .* (1:len));
+    walkingDownstairsGyroZ = @(len) 1.8 * cos(2 * pi * generateVaryingSpeed(0.7, 0.4, len) .* (1:len));
+
+    % Sitting
+    sittingAccel = @(len) generateNoise(0, 0.05, [3, len]);
+    sittingGyro = @(len) generateNoise(0, 0.05, [3, len]);
+
+    % Standing
+    standingAccel = @(len) generateNoise(0, 0.03, [3, len]);
+    standingGyro = @(len) generateNoise(0, 0.03, [3, len]);
+
+    % Laying
+    layingAccel = @(len) generateNoise(0, 0.02, [3, len]);
+    layingGyro = @(len) generateNoise(0, 0.02, [3, len]);
+
+    % Jogging
+    joggingAccelX = @(len) 2.0 * sin(2 * pi * generateVaryingSpeed(0.9, 0.5, len) .* (1:len));
+    joggingAccelY = @(len) 2.0 * cos(2 * pi * generateVaryingSpeed(0.9, 0.5, len) .* (1:len));
+    joggingAccelZ = @(len) 2.0 * sin(2 * pi * generateVaryingSpeed(0.9, 0.5, len) .* (1:len));
+    joggingGyroX = @(len) 2.0 * cos(2 * pi * generateVaryingSpeed(0.9, 0.5, len) .* (1:len));
+    joggingGyroY = @(len) 2.0 * sin(2 * pi * generateVaryingSpeed(0.9, 0.5, len) .* (1:len));
+    joggingGyroZ = @(len) 2.0 * cos(2 * pi * generateVaryingSpeed(0.9, 0.5, len) .* (1:len));
 
     % Simulate activities
     for i = 1:length(activityLabels)
         startIdx = activityIntervals(i) + 1;
         endIdx = activityIntervals(i + 1);
         len = endIdx - startIdx + 1;
-        activityID = i; % Unique ID for each activity
+        activityID = i;
 
         % Log the activity
         activityLog = [activityLog; struct('ID', activityID, 'Label', activityLabels{i}, 'Start', startIdx, 'End', endIdx)];
 
         switch activityLabels{i}
-            case 'Sitting'
-                accelData(:, startIdx:endIdx) = generateNoise(0, 0.05, [3, len]);
-                gyroData(:, startIdx:endIdx) = generateNoise(0, 0.05, [3, len]);
-            case 'Sitting up fast'
-                accelData(:, startIdx:endIdx) = smoothTransition(0, 2, len) + generateNoise(0.1, 0.1, [3, len]);
-                gyroData(:, startIdx:endIdx) = smoothTransition(0, 1, len) + generateNoise(0.1, 0.1, [3, len]);
-            case 'Walking'
-                freq = generateVaryingSpeed(0.5, 0.2, len);
-                accelData(:, startIdx:endIdx) = 1.5 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
-                gyroData(:, startIdx:endIdx) = 1.5 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.2, 0.2, [3, len]);
-            case 'Running'
-                freq = generateVaryingSpeed(1, 0.5, len);
-                accelData(:, startIdx:endIdx) = 3 * sin(2 * pi * freq .* (1:len)) + generateNoise(0.3, 0.3, [3, len]);
-                gyroData(:, startIdx:endIdx) = 3 * cos(2 * pi * freq .* (1:len)) + generateNoise(0.3, 0.3, [3, len]);
-            % case 'Jumping'
-                % accelData(:, startIdx:endIdx) = 3 * abs(sin(2 * pi * (1:len))) + generateNoise(0.3, 0.3, [3, len]);
-                % gyroData(:, startIdx:endIdx) = 3 * abs(cos(2 * pi * (1:len))) + generateNoise(0.3, 0.3, [3, len]);
-            case 'Sitting down fast'
-                accelData(:, startIdx:endIdx) = smoothTransition(2, 0, len) + generateNoise(0.1, 0.1, [3, len]);
-                gyroData(:, startIdx:endIdx) = smoothTransition(1, 0, len) + generateNoise(0.1, 0.1, [3, len]);
-            case 'Lying'
-                accelData(:, startIdx:endIdx) = generateNoise(0, 0.03, [3, len]);
-                gyroData(:, startIdx:endIdx) = generateNoise(0, 0.03, [3, len]);
+            case 'WALKING'
+                accelData(:, startIdx:endIdx) = [walkingAccelX(len); walkingAccelY(len); walkingAccelZ(len)] + generateNoise(0.2, 0.2, [3, len]);
+                gyroData(:, startIdx:endIdx) = [walkingGyroX(len); walkingGyroY(len); walkingGyroZ(len)] + generateNoise(0.2, 0.2, [3, len]);
+            case 'WALKING UPSTAIRS'
+                accelData(:, startIdx:endIdx) = [walkingUpstairsAccelX(len); walkingUpstairsAccelY(len); walkingUpstairsAccelZ(len)] + generateNoise(0.25, 0.25, [3, len]);
+                gyroData(:, startIdx:endIdx) = [walkingUpstairsGyroX(len); walkingUpstairsGyroY(len); walkingUpstairsGyroZ(len)] + generateNoise(0.25, 0.25, [3, len]);
+            case 'WALKING DOWNSTAIRS'
+                accelData(:, startIdx:endIdx) = [walkingDownstairsAccelX(len); walkingDownstairsAccelY(len); walkingDownstairsAccelZ(len)] + generateNoise(0.3, 0.3, [3, len]);
+                gyroData(:, startIdx:endIdx) = [walkingDownstairsGyroX(len); walkingDownstairsGyroY(len); walkingDownstairsGyroZ(len)] + generateNoise(0.3, 0.3, [3, len]);
+            case 'SITTING'
+                accelData(:, startIdx:endIdx) = sittingAccel(len);
+                gyroData(:, startIdx:endIdx) = sittingGyro(len);
+            case 'STANDING'
+                accelData(:, startIdx:endIdx) = standingAccel(len);
+                gyroData(:, startIdx:endIdx) = standingGyro(len);
+            case 'LAYING'
+                accelData(:, startIdx:endIdx) = layingAccel(len);
+                gyroData(:, startIdx:endIdx) = layingGyro(len);
+            case 'JOGGING'
+                accelData(:, startIdx:endIdx) = [joggingAccelX(len); joggingAccelY(len); joggingAccelZ(len)] + generateNoise(0.4, 0.4, [3, len]);
+                gyroData(:, startIdx:endIdx) = [joggingGyroX(len); joggingGyroY(len); joggingGyroZ(len)] + generateNoise(0.4, 0.4, [3, len]);
         end
     end
 
-     % Introduce random fall events with gradual changes
-    fallDuration = 10;
+    % Introduce random fall events
+    fallDuration = 10 * fs; % Duration of fall event in samples
     fallTypes = {'forward', 'backward'};
     fallMagnitudes = [4, 6]; % Different magnitudes for falls
     fallDistribution = randperm(length(activityLabels), length(fallTypes));
@@ -114,93 +121,16 @@ function activityData = generateActivityData(duration)
 
             switch fallTypes{i}
                 case 'forward'
-                    fallAccel = smoothTransition(0, fallMagnitude, fallDuration); % Gradual increase to simulate fall
+                    fallAccel = linspace(0, fallMagnitude, fallDuration); % Gradual increase to simulate fall
                     accelData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallAccel, 3, 1);
-                    fallGyro = smoothTransition(0, fallMagnitude, fallDuration); % Gradual increase to simulate fall
+                    fallGyro = linspace(0, fallMagnitude, fallDuration); % Gradual increase to simulate fall
                     gyroData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallGyro, 3, 1);
                 case 'backward'
-                    fallAccel = smoothTransition(0, -fallMagnitude, fallDuration); % Gradual decrease to simulate fall
+                    fallAccel = linspace(0, -fallMagnitude, fallDuration); % Gradual decrease to simulate fall
                     accelData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallAccel, 3, 1);
-                    fallGyro = smoothTransition(0, -fallMagnitude, fallDuration); % Gradual decrease to simulate fall
+                    fallGyro = linspace(0, -fallMagnitude, fallDuration); % Gradual decrease to simulate fall
                     gyroData(:, fallStart:fallStart + fallDuration - 1) = repmat(fallGyro, 3, 1);
             end
         end
     end
-
-    % Package the generated data into a struct
-    activityData.time = t;
-    activityData.accel = accelData;
-    activityData.gyro = gyroData;
-    activityData.log = activityLog;
-
-    % Plot the generated data for visual verification
-    figure;
-    ax1 = subplot(3, 2, 1);
-    hold on;
-    title('Accelerometer Data (X-axis)');
-    xlabel('Time (s)');
-    ylabel('Acceleration (m/s^2)');
-
-    ax2 = subplot(3, 2, 2);
-    hold on;
-    title('Gyroscope Data (X-axis)');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (rad/s)');
-
-    ax3 = subplot(3, 2, 3);
-    hold on;
-    title('Accelerometer Data (Y-axis)');
-    xlabel('Time (s)');
-    ylabel('Acceleration (m/s^2)');
-
-    ax4 = subplot(3, 2, 4);
-    hold on;
-    title('Gyroscope Data (Y-axis)');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (rad/s)');
-
-    ax5 = subplot(3, 2, 5);
-    hold on;
-    title('Accelerometer Data (Z-axis)');
-    xlabel('Time (s)');
-    ylabel('Acceleration (m/s^2)');
-
-    ax6 = subplot(3, 2, 6);
-    hold on;
-    title('Gyroscope Data (Z-axis)');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (rad/s)');
-
-    colors = lines(length(activityLabels) + length(fallTypes));
-    legendLabels = [activityLabels, {'Forward Fall', 'Backward Fall'}];
-
-    for i = 1:length(activityLabels)
-        startIdx = activityIntervals(i) + 1;
-        endIdx = activityIntervals(i + 1);
-        plot(ax1, t(startIdx:endIdx), accelData(1, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax2, t(startIdx:endIdx), gyroData(1, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax3, t(startIdx:endIdx), accelData(2, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax4, t(startIdx:endIdx), gyroData(2, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax5, t(startIdx:endIdx), accelData(3, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-        plot(ax6, t(startIdx:endIdx), gyroData(3, startIdx:endIdx), 'Color', colors(i, :), 'LineWidth', 1.5);
-    end
-
-    for i = 1:length(fallTypes)
-        fallIdx = find(abs(accelData(1, :)) == max(abs(accelData(1, :))), 1);
-        if ~isempty(fallIdx)
-            fallEnd = fallIdx + fallDuration - 1;
-            plot(ax1, t(fallIdx:fallEnd), accelData(1, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax2, t(fallIdx:fallEnd), gyroData(1, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax3, t(fallIdx:fallEnd), accelData(2, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax4, t(fallIdx:fallEnd), gyroData(2, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax5, t(fallIdx:fallEnd), accelData(3, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-            plot(ax6, t(fallIdx:fallEnd), gyroData(3, fallIdx:fallEnd), 'Color', colors(length(activityLabels) + i, :), 'LineWidth', 1.5);
-        end
-    end
-
-    legend(ax1, legendLabels, 'Location', 'best');
-    hold(ax1, 'off');
-
-    % Save the data to a file 
-    % save('synthetic_activity_data.mat', 'activityData');
 end
