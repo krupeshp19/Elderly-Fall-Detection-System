@@ -1,38 +1,39 @@
-function features = extractFeatures(preprocessedData)
-    try
-        % Validate input data
-        validateattributes(preprocessedData, {'struct'}, {'nonempty'}, mfilename, 'preprocessedData');
-        validateattributes(preprocessedData.accel, {'numeric'}, {'size', [3, NaN]}, mfilename, 'accelData');
-        validateattributes(preprocessedData.gyro, {'numeric'}, {'size', [3, NaN]}, mfilename, 'gyroData');
-        
-        % Initialize feature struct
-        features = struct;
-        
-        % Feature extraction function
-        extractStatFeatures = @(data) struct( ...
-            'mean', mean(data, 2), ...
-            'std', std(data, 0, 2), ...
-            'rms', rms(data, 2), ...
-            'max', max(data, [], 2), ...
-            'min', min(data, [], 2), ...
-            'energy', sum(data .^ 2, 2));
-        
-        % Extract features for accelerometer data
-        features.accel = extractStatFeatures(preprocessedData.accel);
-        
-        % Extract features for gyroscope data
-        features.gyro = extractStatFeatures(preprocessedData.gyro);
-        
-        % Calculate correlations between accelerometer and gyroscope data
-        features.corr = struct( ...
-            'accel_gyro_x', corr(preprocessedData.accel(1, :)', preprocessedData.gyro(1, :)'), ...
-            'accel_gyro_y', corr(preprocessedData.accel(2, :)', preprocessedData.gyro(2, :)'), ...
-            'accel_gyro_z', corr(preprocessedData.accel(3, :)', preprocessedData.gyro(3, :)'));
-        
-    catch ME
-        % Handle errors gracefully
-        disp('An error occurred during feature extraction:');
-        disp(ME.message);
-        features = [];
-    end
+function activityData = extractFeatures(t, accelData, gyroData, tBodyAcc, tGravityAcc, tBodyAccJerk, tBodyGyroJerk, activityLog, ~)
+    % Compute magnitudes
+    tBodyAccMag = sqrt(sum(tBodyAcc.^2, 1));
+    tGravityAccMag = sqrt(sum(tGravityAcc.^2, 1));
+    tBodyAccJerkMag = sqrt(sum(tBodyAccJerk.^2, 1));
+    tBodyGyroMag = sqrt(sum(gyroData.^2, 1));
+    tBodyGyroJerkMag = sqrt(sum(tBodyGyroJerk.^2, 1));
+
+    % Fast Fourier Transform (FFT)
+    fBodyAcc = abs(fft(tBodyAcc, [], 2));
+    fBodyAccJerk = abs(fft(tBodyAccJerk, [], 2));
+    fBodyGyro = abs(fft(gyroData, [], 2));
+    fBodyAccMag = abs(fft(tBodyAccMag));
+    fBodyAccJerkMag = abs(fft(tBodyAccJerkMag));
+    fBodyGyroMag = abs(fft(tBodyGyroMag));
+    fBodyGyroJerkMag = abs(fft(tBodyGyroJerkMag));
+
+    % Package the generated data into a struct
+    activityData.time = t;
+    activityData.accel = accelData;
+    activityData.gyro = gyroData;
+    activityData.tBodyAcc = tBodyAcc;
+    activityData.tGravityAcc = tGravityAcc;
+    activityData.tBodyAccJerk = tBodyAccJerk;
+    activityData.tBodyGyroJerk = tBodyGyroJerk;
+    activityData.tBodyAccMag = tBodyAccMag;
+    activityData.tGravityAccMag = tGravityAccMag;
+    activityData.tBodyAccJerkMag = tBodyAccJerkMag;
+    activityData.tBodyGyroMag = tBodyGyroMag;
+    activityData.tBodyGyroJerkMag = tBodyGyroJerkMag;
+    activityData.fBodyAcc = fBodyAcc;
+    activityData.fBodyAccJerk = fBodyAccJerk;
+    activityData.fBodyGyro = fBodyGyro;
+    activityData.fBodyAccMag = fBodyAccMag;
+    activityData.fBodyAccJerkMag = fBodyAccJerkMag;
+    activityData.fBodyGyroMag = fBodyGyroMag;
+    activityData.fBodyGyroJerkMag = fBodyGyroJerkMag;
+    activityData.log = activityLog;
 end
