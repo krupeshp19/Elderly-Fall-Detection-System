@@ -1,40 +1,21 @@
-function preprocessedData = preprocessData(activityData)
-    try
-        % Validate input data
-        validateattributes(activityData, {'struct'}, {'nonempty'}, mfilename, 'activityData');
-        validateattributes(activityData.accel, {'numeric'}, {'size', [3, NaN]}, mfilename, 'accelData');
-        validateattributes(activityData.gyro, {'numeric'}, {'size', [3, NaN]}, mfilename, 'gyroData');
-        
-        % Normalize the accelerometer and gyroscope data
-        accelData = normalize(activityData.accel, 2);
-        gyroData = normalize(activityData.gyro, 2);
-        
-        % Apply a low-pass filter to remove noise
-        [b, a] = butter(2, 0.1, 'low');
-        for i = 1:3
-            accelData(i, :) = filtfilt(b, a, accelData(i, :));
-            gyroData(i, :) = filtfilt(b, a, gyroData(i, :));
-        end
-        
-        % Package the preprocessed data into a struct
-        preprocessedData.time = activityData.time;
-        preprocessedData.accel = accelData;
-        preprocessedData.gyro = gyroData;
-        preprocessedData.log = activityData.log;
-        
-        % Plot the preprocessed data for visual verification
-        figure;
-        subplot(3, 2, 1); plot(preprocessedData.time, accelData(1, :)); title('Accelerometer X-axis');
-        subplot(3, 2, 2); plot(preprocessedData.time, gyroData(1, :)); title('Gyroscope X-axis');
-        subplot(3, 2, 3); plot(preprocessedData.time, accelData(2, :)); title('Accelerometer Y-axis');
-        subplot(3, 2, 4); plot(preprocessedData.time, gyroData(2, :)); title('Gyroscope Y-axis');
-        subplot(3, 2, 5); plot(preprocessedData.time, accelData(3, :)); title('Accelerometer Z-axis');
-        subplot(3, 2, 6); plot(preprocessedData.time, gyroData(3, :)); title('Gyroscope Z-axis');
-        
-    catch ME
-        % Handle errors gracefully
-        disp('An error occurred during preprocessing:');
-        disp(ME.message);
-        preprocessedData = [];
-    end
+function [accelData, gyroData, tBodyAcc, tGravityAcc, tBodyAccJerk, tBodyGyroJerk] = preprocessData(accelData, gyroData, fs)
+    % Apply median filter
+    accelData = medfilt1(accelData, 3, [], 2);
+    gyroData = medfilt1(gyroData, 3, [], 2);
+
+    % Apply 3rd order low pass Butterworth filter with a corner frequency of 20 Hz
+    [b, a] = butter(3, 20/(fs/2), 'low');
+    accelData = filtfilt(b, a, accelData')';
+    gyroData = filtfilt(b, a, gyroData')';
+
+    % Separate acceleration into body and gravity components using low pass Butterworth filter with 0.3 Hz
+    [b_grav, a_grav] = butter(3, 0.3/(fs/2), 'low');
+    tGravityAcc = filtfilt(b_grav, a_grav, accelData')';
+    tBodyAcc = accelData - tGravityAcc;
+
+    % Compute Jerk signals
+    tBodyAccJerk = diff(tBodyAcc, 1, 2);
+    tBodyAccJerk = [tBodyAccJerk, tBodyAccJerk(:, end)]; % Maintain original length
+    tBodyGyroJerk = diff(gyroData, 1, 2);
+    tBodyGyroJerk = [tBodyGyroJerk, tBodyGyroJerk(:, end)]; % Maintain original length
 end
